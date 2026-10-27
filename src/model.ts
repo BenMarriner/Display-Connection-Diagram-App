@@ -55,6 +55,10 @@ export const capsSchema = z.object({
   modes: z.array(z.string()).nullable(),
   depths: z.array(positive).nullable(),
   formats: z.array(z.enum(formats)).nullable(),
+  // A partial list confirms its entries; unlisted values still need verification.
+  modesComplete: z.boolean().optional(),
+  depthsComplete: z.boolean().optional(),
+  formatsComplete: z.boolean().optional(),
   vrr: feature,
   hdr: feature,
   dsc: feature,

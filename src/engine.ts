@@ -8,7 +8,7 @@ import {
   modeLabel,
   modeKey,
 } from "./model";
-import { hdmiFrlRates, links, timings } from "./presets";
+import { hdmiFrlRates, links, signalPixelClock } from "./presets";
 
 export type Finding = {
   severity: "error" | "warning";
@@ -63,14 +63,7 @@ export function activeVideo(s: Signal): number {
 }
 export function timingClock(s: Signal): number | null {
   if (s.pixelClockMHz) return s.pixelClockMHz;
-  const t = timings.find(
-    (t) =>
-      t.id === s.timingId &&
-      t.width === s.width &&
-      t.height === s.height &&
-      t.refresh === s.refresh,
-  );
-  return t?.clock ?? null;
+  return signalPixelClock(s);
 }
 
 /** Transport result: demand/capacity are ALWAYS expressed in the same basis. */
@@ -362,9 +355,9 @@ export function simulate(project: Project): SimulationResult {
         !caps.modes.includes(modeKey(s))
       )
         add(
-          "error",
+          caps.modesComplete === false ? "warning" : "error",
           p.id,
-          "Display mode not declared",
+          caps.modesComplete === false ? "Display mode needs verification" : "Display mode not declared",
           `${name} does not declare ${modeLabel(s)}.`,
           "Select a mode declared along the whole route, or verify and add it to the port.",
         );
@@ -378,10 +371,10 @@ export function simulate(project: Project): SimulationResult {
         );
       else if (!caps.depths.includes(s.bpc))
         add(
-          "error",
+          caps.depthsComplete === false ? "warning" : "error",
           p.id,
-          "Color depth unsupported",
-          `${name} does not support ${s.bpc}-bit color.`,
+          caps.depthsComplete === false ? "Color depth needs verification" : "Color depth unsupported",
+          `${name} ${caps.depthsComplete === false ? "has not verified" : "does not support"} ${s.bpc}-bit color.`,
           "Choose a declared color depth at the source output.",
         );
       if (caps.formats === null)
@@ -394,10 +387,10 @@ export function simulate(project: Project): SimulationResult {
         );
       else if (!caps.formats.includes(s.chroma))
         add(
-          "error",
+          caps.formatsComplete === false ? "warning" : "error",
           p.id,
-          "Color format unsupported",
-          `${name} does not support ${s.chroma}.`,
+          caps.formatsComplete === false ? "Color format needs verification" : "Color format unsupported",
+          `${name} ${caps.formatsComplete === false ? "has not verified" : "does not support"} ${s.chroma}.`,
           "Choose a color format supported along the route.",
         );
       featureCheck(caps.vrr, s.vrr, p.id, "VRR", name);

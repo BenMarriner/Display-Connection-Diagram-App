@@ -6,6 +6,7 @@ import {
   type PortTemplate,
 } from "./model";
 import { links, sourceLinks } from "./presets";
+import { prefillTemplatePort } from "./templateDefaults";
 
 export function nextPortName(ports: Port[], base: string): string {
   const names = new Set(ports.map((p) => p.name.toLowerCase()));
@@ -63,7 +64,7 @@ export function savePortTemplate(port: Port, name: string): PortTemplate {
     name: _name,
     direction: _direction,
     ...spec
-  } = structuredClone(port);
+  } = structuredClone(prefillTemplatePort(port));
   return {
     id: id(),
     name: name.trim() || `${port.name} specs`,
@@ -156,7 +157,7 @@ export const starterPortTemplates: PortTemplate[] = starterProfiles.map(
           ? "Legacy HDMI port bandwidth. Standard HDMI is a cable category tested for 720p/1080i; this template does not certify a cable. "
           : "") +
         `${connector === "USB-C" ? `Uses ${lanes} DisplayPort video lanes over USB-C. ` : ""}` +
-        "Sets the version label and total link bandwidth before encoding. Choose the bandwidth listed for your device; the version alone does not determine it. Display modes, color depth and optional features still need the device's specifications.",
+        "Sets the version label, link bandwidth and verified RGB/8-bit baseline. Additional depths, formats, display modes and optional features need device-specific verification. Partial capability lists leave unlisted values unverified.",
     };
   },
 );

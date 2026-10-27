@@ -22,7 +22,7 @@ import {
   modeLabel,
 } from "./model";
 import { type SimulationResult, type Finding } from "./engine";
-import { links, timings, applyTiming } from "./presets";
+import { links, timings, applyTiming, presetTiming, signalPixelClock } from "./presets";
 import { kindLabels } from "./devices";
 import { duplicatePort } from "./portSpecs";
 import { PortListEditor, PortSpecTools } from "./PortTools";
@@ -182,15 +182,23 @@ function SignalForm({
             checked={s.hdr}
             onChange={(hdr) => change({ hdr })}
           />
-          <NumberField
-            label="Pixel clock override (MHz)"
-            value={s.pixelClockMHz}
-            onChange={(pixelClockMHz) => change({ pixelClockMHz })}
-          />
+          {s.pixelClockMHz === null && presetTiming(s) ? (
+            <>
+              <Field label="Pixel clock (MHz)">
+                <input aria-label="Pixel clock (MHz)" value={signalPixelClock(s) ?? ""} readOnly />
+              </Field>
+              <button className="text-button" onClick={() => change({ pixelClockMHz: signalPixelClock(s) })}>Override preset pixel clock</button>
+            </>
+          ) : (
+            <NumberField label="Pixel clock (MHz)" value={s.pixelClockMHz} onChange={(pixelClockMHz) => change({ pixelClockMHz })} />
+          )}
           <p className="muted small">
-            {timings.find((t) => t.id === s.timingId)?.basis ??
-              "Custom timing: enter the actual device pixel clock."}
+            {s.pixelClockMHz !== null ? "Manual clock override. " : presetTiming(s) ? "Prefilled automatically from the timing preset. " : "Custom timing: enter the actual device pixel clock. "}
+            {presetTiming(s)?.basis}
           </p>
+          {s.pixelClockMHz !== null && presetTiming(s) && (
+            <button className="text-button" onClick={() => change({ pixelClockMHz: null })}>Use preset pixel clock</button>
+          )}
           <Toggle
             label="DSC compression"
             checked={s.dsc}
@@ -275,10 +283,16 @@ function CapabilitiesForm({
         <summary>
           Supported display modes{" "}
           <span className="summary-value">
-            {c.modes === null ? "Unknown" : `${c.modes.length} modes`}
+            {c.modes === null ? "Unknown" : `${c.modes.length} ${c.modesComplete === false ? "verified" : "modes"}`}
           </span>
         </summary>
         <div className="details-content">
+          {c.modes !== null && (
+            <label className="check-row">
+              <input type="checkbox" checked={c.modesComplete !== false} onChange={(e) => caps({ modesComplete: e.target.checked })} />
+              Complete mode list (unlisted modes are unsupported)
+            </label>
+          )}
           <label className="check-row">
             <input
               type="checkbox"
@@ -330,6 +344,7 @@ function CapabilitiesForm({
           value={c.depths === null ? "unknown" : c.depths.join(",")}
           onChange={(e) =>
             caps({
+              depthsComplete: true,
               depths:
                 e.target.value === "unknown"
                   ? null
@@ -338,12 +353,19 @@ function CapabilitiesForm({
           }
         >
           <option value="unknown">Unknown</option>
+          {c.depthsComplete === false && c.depths !== null && (
+            <option value={c.depths.join(",")}>{c.depths.join(" / ")}-bit verified · more unknown</option>
+          )}
           <option value="8">8-bit</option>
           <option value="8,10">8 / 10-bit</option>
           <option value="8,10,12">8 / 10 / 12-bit</option>
           <option value="8,10,12,16">8 / 10 / 12 / 16-bit</option>
         </select>
       </Field>
+      {c.depths !== null && <label className="check-row">
+        <input type="checkbox" checked={c.depthsComplete !== false} onChange={(e) => caps({ depthsComplete: e.target.checked })} />
+        Complete depth list
+      </label>}
       <FeatureField
         label="VRR capability"
         value={c.vrr}
@@ -378,6 +400,10 @@ function CapabilitiesForm({
           />
           <div className="field">
             <span>Supported color formats</span>
+            {c.formats !== null && <label className="check-row">
+              <input type="checkbox" checked={c.formatsComplete !== false} onChange={(e) => caps({ formatsComplete: e.target.checked })} />
+              Complete format list (unlisted formats are unsupported)
+            </label>}
             <label className="check-row">
               <input
                 type="checkbox"

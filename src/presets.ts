@@ -83,6 +83,13 @@ export const timings = [
     basis: "CTA VIC 118",
   },
 ] as const;
+export function presetTiming(signal: Signal) {
+  return timings.find((t) => t.id === signal.timingId && t.width === signal.width &&
+    t.height === signal.height && t.refresh === signal.refresh);
+}
+export function signalPixelClock(signal: Signal): number | null {
+  return signal.pixelClockMHz ?? presetTiming(signal)?.clock ?? null;
+}
 export function applyTiming(signal: Signal, timingId: string): Signal {
   const t = timings.find((t) => t.id === timingId);
   return t

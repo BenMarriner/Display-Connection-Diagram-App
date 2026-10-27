@@ -45,7 +45,7 @@ export default function CableSpecTools({ cable, project, update, notify }: {
           </a>
         </div>
       ) : <p className="inline-note">Choose the certification on your cable or enter its verified rating below.</p>}
-      <p className="inline-note">Templates set bandwidth limits. Your cable label, length, notes and feature settings are preserved.</p>
+      <p className="inline-note">Templates fill bandwidth limits and verified pass-through defaults. Entered feature settings, cable label, length and notes are preserved.</p>
       {usesUsbC && <p className="inline-note">For USB-C, use a DisplayPort template only when the actual USB-C/DisplayPort cable declares that rating. Video lane allocation also limits bandwidth.</p>}
     </div>
   );

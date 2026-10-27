@@ -2,6 +2,7 @@ import { makeDevice } from "./devices";
 import { newPort, type Capabilities, type Device } from "./model";
 import { applyTiming, type timings } from "./presets";
 import { matchesLibrarySearch } from "./librarySearch";
+import { prefillTemplatePort } from "./templateDefaults";
 
 export const consoleFamilies = ["Nintendo", "PlayStation", "Xbox", "Retro HDMI"] as const;
 export type ConsolePreset = {
@@ -287,12 +288,31 @@ export function matchesConsolePreset(preset: ConsolePreset, query: string): bool
   return matchesLibrarySearch(consolePresetSearchText(preset), query);
 }
 
+/** Verified common output modes; the list is intentionally non-exhaustive. */
+function consoleModes(preset: ConsolePreset): string[] | null {
+  const key = preset.id;
+  if (key.startsWith("ps5")) return ["720p60", "1080p60", "1080p120", "1440p60", "1440p120", "4k30", "4k60", "4k120"];
+  if (key === "ps4-pro" || key.startsWith("xbox-one-s") || key === "xbox-one-x")
+    return ["720p60", "1080p60", ...(key === "ps4-pro" ? [] : ["1080p120", "1440p120"]), "4k30", "4k60"];
+  if (key.startsWith("xbox-series")) return ["1080p60", "1080p120", "1440p60", "1440p120", "4k60", ...(key === "xbox-series-s" ? [] : ["4k120"])];
+  if (key === "nintendo-switch-2-docked") return ["1080p60", "1080p120", "1440p60", "1440p120", "4k60"];
+  if (key.startsWith("ps3") || key.startsWith("ps4") || key.startsWith("xbox-360") || key === "xbox-one" ||
+    key === "nintendo-wii-u" || key.startsWith("nintendo-switch")) return ["720p60", "1080p60"];
+  if (["nes-classic", "snes-classic", "playstation-classic", "sega-genesis-mini", "sega-genesis-mini-2", "playstation-tv"].includes(key)) return ["720p60"];
+  return null;
+}
+
 export function makeConsoleDevice(
   preset: ConsolePreset,
   position = { x: 80, y: 80 },
 ): Device {
   const output = newPort("out", "HDMI", preset.portName ?? "HDMI out");
   output.caps = { ...output.caps, ...structuredClone(preset.caps ?? {}) };
+  const knownModes = consoleModes(preset);
+  if (output.caps.modes === null && knownModes) {
+    output.caps.modes = knownModes;
+    output.caps.modesComplete = false;
+  }
   if (preset.defaultTiming) output.signal = applyTiming(output.signal, preset.defaultTiming);
   const inputs = preset.hdmiInput ? [newPort("in", "HDMI", "HDMI in (TV)")] : [];
   for (const input of inputs) input.caps.version = "1.4b";
@@ -300,7 +320,7 @@ export function makeConsoleDevice(
     ...makeDevice("console", position),
     name: preset.name,
     model: preset.name,
-    ports: [...inputs, output],
+    ports: [...inputs, output].map(prefillTemplatePort),
     selectedInput: null,
     maxStreams: 1,
     specUrl: preset.sourceUrl,

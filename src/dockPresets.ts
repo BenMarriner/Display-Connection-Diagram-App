@@ -1,6 +1,7 @@
 import { makeDevice } from "./devices";
 import { newPort, type Device, type Port } from "./model";
 import { matchesLibrarySearch } from "./librarySearch";
+import { prefillTemplatePort } from "./templateDefaults";
 
 export type DockPreset = {
   id: string;
@@ -36,7 +37,7 @@ function thinkPad40asPorts(): Port[] {
     // Version and peak resolution alone do not establish downstream link rates,
     // exhaustive timing/depth combinations, or DSC pass-through capabilities.
   }
-  return [upstream, ...outputs];
+  return [upstream, ...outputs].map(prefillTemplatePort);
 }
 
 export const dockPresets: DockPreset[] = [

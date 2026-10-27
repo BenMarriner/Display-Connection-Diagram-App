@@ -1,5 +1,6 @@
 import { makeDevice } from "./devices";
 import { newPort, type Port, type Project, type Device } from "./model";
+import { prefillTemplatePort } from "./templateDefaults";
 
 /**
  * Curated desktop GPU output layouts.
@@ -44,7 +45,7 @@ function gpuPort(
 ): Port {
   const port = newPort("out", connector, name);
   port.caps = { ...port.caps, version, link, ...features };
-  return port;
+  return prefillTemplatePort(port);
 }
 
 function nvidia50Ports(): Port[] {
@@ -1144,6 +1145,43 @@ export const gpuPresets: GpuPreset[] = [
     "Exact SPARKLE product datasheet. SPARKLE documents HDMI 2.1 plus three DP 2.1 connectors. Per-port raw rates are not stated in the board datasheet, so links remain unknown.",
   ),
 ];
+
+// Supplemental display-engine facts. Exact board connector counts and link rates
+// still come from the per-board factories above; version labels never set rates.
+for (const preset of gpuPresets) {
+  const ports = preset.ports;
+  const nvidia = /\bRTX\s*\d/.test(preset.name);
+  const radeon9070 = /\b9070\b/.test(preset.name);
+  const sparkleB580 = /^SPARKLE.*B580/.test(preset.name);
+  const source = nvidia
+    ? /3060/.test(preset.name)
+      ? "https://www.nvidia.com/en-us/geforce/graphics-cards/30-series/rtx-3060-3060ti/"
+      : /4090/.test(preset.name)
+        ? "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/"
+        : "https://www.nvidia.com/en-au/geforce/graphics-cards/50-series/rtx-5050/"
+    : radeon9070
+      ? "https://ir.amd.com/news-events/press-releases/detail/1238/amd-unveils-next-generation-amd-rdna-4-architecture-with-the-launch-of-amd-radeon-rx-9000-series-graphics-cards"
+      : sparkleB580 ? "https://www.sparkle.com.tw/files/20250121144118157.pdf" : "";
+  preset.ports = () => ports().map((port) => {
+    const result = prefillTemplatePort(port);
+    if (nvidia || radeon9070) {
+      result.caps.depths = [8, 10, 12];
+      result.caps.depthsComplete = false;
+      result.caps.hdr = "yes";
+      result.caps.vrr = "yes";
+    }
+    if (nvidia || (sparkleB580 && port.protocol === "DisplayPort")) {
+      result.caps.dsc = "yes";
+      result.caps.hdr = "yes";
+    }
+    if (nvidia) {
+      result.caps.modes = ["1080p60", "4k60", "4k120", "3840x2160@240"];
+      result.caps.modesComplete = false;
+    }
+    return result;
+  });
+  if (source) preset.notes += `\nAdvanced defaults include documented GPU display-engine capabilities, with partial depth/mode lists. Board-specific link rates and mode combinations still require verification. Supplemental source: ${source}`;
+}
 
 export function makeGpuDevice(
   preset: GpuPreset,

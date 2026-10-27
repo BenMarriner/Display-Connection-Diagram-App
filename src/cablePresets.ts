@@ -87,9 +87,20 @@ export function cablePresetMatches(cable: Cable, preset: CablePreset): boolean {
     (cable.dpLaneGbps ?? null) === preset.dpLaneGbps;
 }
 
+export function cablePresetFeatures(preset: CablePreset): Partial<Cable["features"]> {
+  // These describe transport pass-through, not source/display feature support.
+  if (preset.protocol === "DisplayPort" || ["hdmi-ultra", "hdmi-ultra96"].includes(preset.id))
+    return { hdr: "yes", vrr: "yes", dsc: "yes" };
+  if (preset.id === "hdmi-premium") return { hdr: "yes" };
+  return {};
+}
+
 /** A single undoable specification change; wiring and entered hardware details stay intact. */
 export function applyCablePreset(project: Project, cable: Cable, preset: CablePreset): Cable {
   if (cableProtocol(project, cable) !== preset.protocol)
     throw new Error("Choose a cable template matching the connection's video protocol.");
-  return { ...cable, presetId: preset.id, ratingGbps: preset.ratingGbps, dpLaneGbps: preset.dpLaneGbps };
+  const features = { ...cable.features };
+  for (const [key, value] of Object.entries(cablePresetFeatures(preset)))
+    if (features[key as keyof typeof features] === "unknown") features[key as keyof typeof features] = value;
+  return { ...cable, features, presetId: preset.id, ratingGbps: preset.ratingGbps, dpLaneGbps: preset.dpLaneGbps };
 }
